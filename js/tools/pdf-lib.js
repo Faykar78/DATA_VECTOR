@@ -222,8 +222,15 @@ const PDFActions = {
                 container.innerHTML = doc.body ? doc.body.innerHTML : text;
 
             } else if (ext === 'pptx') {
-                if (typeof $ === 'undefined' || !$.fn.pptxToHtml) {
-                    throw new Error("PPTX converter library not loaded. Please refresh.");
+                if (typeof $ === 'undefined') {
+                    throw new Error("jQuery not loaded. Please check your connection or ad-blocker.");
+                }
+                if (!$.fn.pptxToHtml) {
+                    // Try to wait a moment in case it's race condition
+                    await new Promise(r => setTimeout(r, 1000));
+                    if (!$.fn.pptxToHtml) {
+                        throw new Error("PPTXjs library failed to load. Please refresh.");
+                    }
                 }
 
                 const blobUrl = URL.createObjectURL(file);
