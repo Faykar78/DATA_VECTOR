@@ -38,7 +38,8 @@ class Wave {
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
 
-        for (let x = 0; x < width; x += 5) {
+        // Optimization: Increase step size (15-20px is sufficient for smooth waves)
+        for (let x = 0; x < width; x += 20) {
             // Complex sine wave for "weaving" look
             const y1 = Math.sin(x * this.frequency + time * this.speed + this.offset);
             const y2 = Math.cos(x * this.frequency * 0.5 + time * this.speed * 0.8);
@@ -46,8 +47,11 @@ class Wave {
             const y = this.y + (y1 * this.amplitude) + (y2 * this.amplitude * 0.5);
 
             if (x === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+            else ctx.bezierCurveTo(x - 10, y, x - 10, y, x, y); // Smooth curve if needed, or just lineTo
         }
+
+        // Ensure the last point reaches the edge
+        ctx.lineTo(width, this.y);
 
         ctx.stroke();
     }

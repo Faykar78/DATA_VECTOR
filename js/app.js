@@ -46,6 +46,45 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('.scroll-hidden').forEach(el => observer.observe(el));
 
+    // 0.8 Header Scroll (Pill/Glass Effect) and Hero Convergence
+    const header = document.querySelector('header');
+    const heroWrapper = document.querySelector('.hero-wrapper');
+
+    window.addEventListener('scroll', () => {
+        const scrollY = window.scrollY;
+
+        // Header Logic
+        if (header) {
+            if (scrollY > 50) {
+                header.classList.add('header-scrolled');
+            } else {
+                header.classList.remove('header-scrolled');
+            }
+        }
+
+        // Hero Convergence Logic (Scale down + Radius)
+        if (heroWrapper) {
+            // Nixtio converges quickly in the first 600px
+            const maxScroll = 600;
+            const progress = Math.min(scrollY / maxScroll, 1);
+
+            // Cubic ease for premium feel
+            const eased = 1 - Math.pow(1 - progress, 3);
+
+            // Scale from 1.0 -> 0.92
+            const scale = 1 - (eased * 0.08);
+            // Radius from 0 -> 40px
+            const radius = eased * 40;
+
+            requestAnimationFrame(() => {
+                heroWrapper.style.transform = `scale(${scale})`;
+                heroWrapper.style.borderRadius = `${radius}px`;
+                // Ensure it stays pinned until scrolled past? 
+                // The visual effect usually implies the content slides over it.
+                // Our CSS has sticky, so it stays.
+            });
+        }
+    });
 
     // 1. Identify Page
     const isToolPage = !!document.getElementById('toolTitle');
