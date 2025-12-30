@@ -37,56 +37,47 @@ function doPost(e) {
 }
 
 function convertFile(data, type) {
-  var convertedId;
+  var tempId, convertedId;
   try {
-    // 1. Generic Octet Stream (Let Drive Sniff)
-    // We purposefully don't specify "docx" mime to avoid "Bad Request" on mismatch.
+    // 1. Strict MIME Mapping
+    var ext = data.fileName.split('.').pop().toLowerCase();
     var sourceMime = "application/octet-stream";
-    var token = ScriptApp.getOAuthToken();
+    
+    if (ext === "docx") sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    else if (ext === "doc") sourceMime = "application/msword";
+    else if (ext === "pptx") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+    // 2. Create Temp File via DriveApp
     var cleanBase64 = data.fileData.replace(/\s/g, ''); 
-
-    // STRATEGY: Drive API v2 Multipart (Legacy & Robust)
-    // Metadata: Request Google Doc Format
-    // Content: Generic Stream + Base64
+    var blob = Utilities.newBlob(Utilities.base64Decode(cleanBase64), sourceMime, data.fileName);
+    var tempFile = DriveApp.createFile(blob);
+    tempId = tempFile.getId();
     
-    var boundary = "xxxxxxxxxx";
-    var metadata = {
-      title: data.fileName,
-      mimeType: (type === "presentation" ? "application/vnd.google-apps.presentation" : "application/vnd.google-apps.document")
-    };
+    // DEBUG: Verify MimeType
+    var detectedMime = tempFile.getMimeType();
     
-    // Multipart Body
-    var payload = 
-      "--" + boundary + "\r\n" + 
-      "Content-Type: application/json; charset=UTF-8\r\n\r\n" + 
-      JSON.stringify(metadata) + "\r\n" + 
-      "--" + boundary + "\r\n" + 
-      "Content-Type: " + sourceMime + "\r\n" + 
-      "Content-Transfer-Encoding: base64\r\n\r\n" + 
-      cleanBase64 + "\r\n" + 
-      "--" + boundary + "--";
-
-    // V2 Upload URL with convert=true
-    var url = "https://www.googleapis.com/upload/drive/v2/files?uploadType=multipart&convert=true";
+    // 3. Convert using Drive API V2 Copy
+    var token = ScriptApp.getOAuthToken();
+    var url = "https://www.googleapis.com/drive/v2/files/" + tempId + "/copy?convert=true";
     
     var response = UrlFetchApp.fetch(url, {
        method: 'post',
        headers: { 
           'Authorization': 'Bearer ' + token, 
-          'Content-Type': "multipart/related; boundary=" + boundary 
+          'Content-Type': 'application/json' 
        },
-       payload: payload, 
+       payload: JSON.stringify({ title: data.fileName.replace(/\.[^/.]+$/, "") }),
        muteHttpExceptions: true
     });
     
     if (response.getResponseCode() >= 400) {
-        throw new Error("Upload Error (V2 Multipart): " + response.getContentText());
+        throw new Error("API Error (" + response.getResponseCode() + ") Mime: " + detectedMime + " Msg: " + response.getContentText());
     }
     
     var json = JSON.parse(response.getContentText());
     convertedId = json.id;
     
-    // 3. Export as PDF
+    // 4. Export as PDF
     var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
     
@@ -99,9 +90,12 @@ function convertFile(data, type) {
   } catch (e) {
     throw new Error("Conversion Failed: " + e.toString());
   } finally {
+    // Cleanup
+    if (tempId) try { DriveApp.getFileById(tempId).setTrashed(true); } catch(e){}
     if (convertedId) try { DriveApp.getFileById(convertedId).setTrashed(true); } catch(e){}
   }
 }
+
 function doGet(e) {
   return ContentService.createTextOutput("DataVector Backend is Running.");
 }
