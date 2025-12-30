@@ -33,6 +33,33 @@ const PDFActions = {
         });
     },
 
+    // --- Backend Helper ---
+    convertWithBackend: async (file, actionName) => {
+        if (!window.GOOGLE_SCRIPT_URL) throw new Error("Backend URL not configured in app.js");
+
+        const dataUrl = await PDFActions.readFileAsDataURL(file);
+        const base64 = dataUrl.split(',')[1];
+
+        const response = await fetch(window.GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: actionName,
+                fileData: base64,
+                fileName: file.name
+            })
+        });
+
+        const result = await response.json();
+        if (result.error) throw new Error("Server Error: " + result.error);
+
+        const byteCharacters = atob(result.pdf);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        return new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    },
+
     // --- Actions ---
 
     merge: async (files) => {
@@ -205,9 +232,9 @@ const PDFActions = {
 
         try {
             if (ext === 'docx' || ext === 'doc') {
-                const arrayBuffer = await PDFActions.readFileAsArrayBuffer(file);
-                const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
-                container.innerHTML = result.value;
+                container.innerHTML = "<h2>Converting Word on Server...</h2><p>This may take a few seconds.</p>";
+                container.style.zIndex = '10000'; container.style.left = '0'; container.style.top = '100px';
+                return await PDFActions.convertWithBackend(file, 'convert_word');
 
             } else if (ext === 'xlsx' || ext === 'xls') {
                 const arrayBuffer = await PDFActions.readFileAsArrayBuffer(file);
@@ -225,45 +252,9 @@ const PDFActions = {
                 container.innerHTML = doc.body ? doc.body.innerHTML : text;
 
             } else if (ext === 'pptx') {
-                if (!window.GOOGLE_SCRIPT_URL) {
-                    // Fallback check if passed or global
-                    throw new Error("PPTX Backend URL not configured. Please see GUIDE_SETUP_BACKEND.md");
-                }
-
-                // Show uploading status (optional, but good UX)
-                container.innerHTML = "<h2>Converting on Server...</h2><p>This may take a few seconds.</p>";
-                container.style.zIndex = '10000';
-                container.style.left = '0';
-                container.style.top = '100px';
-
-                // 1. Get Base64
-                const dataUrl = await PDFActions.readFileAsDataURL(file);
-                const base64 = dataUrl.split(',')[1];
-
-                // 2. Call API
-                const response = await fetch(window.GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        action: 'convert_pptx',
-                        fileData: base64,
-                        fileName: file.name
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.error) {
-                    throw new Error("Server Error: " + result.error);
-                }
-
-                // 3. Convert Base64 response to Blob
-                const byteCharacters = atob(result.pdf);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                return new Blob([byteArray], { type: 'application/pdf' });
+                container.innerHTML = "<h2>Converting PPTX on Server...</h2><p>This may take a few seconds.</p>";
+                container.style.zIndex = '10000'; container.style.left = '0'; container.style.top = '100px';
+                return await PDFActions.convertWithBackend(file, 'convert_pptx');
 
             } else {
                 throw new Error("Unsupported format");

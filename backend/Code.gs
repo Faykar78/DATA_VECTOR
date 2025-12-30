@@ -3,12 +3,10 @@
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
-  lock.tryLock(10000); // Wait up to 10s for lock
+  lock.tryLock(10000); 
 
   try {
     var data = {};
-    
-    // Parse Input
     if (e.postData && e.postData.contents) {
       data = JSON.parse(e.postData.contents);
     } else if (e.parameter) {
@@ -17,52 +15,52 @@ function doPost(e) {
 
     // --- ROUTER ---
     
-    // 1. PPTX to PDF Conversion
+    // 1. PPTX to PDF
     if (data.action === "convert_pptx") {
-      return convertPPTX(data);
+      return convertFile(data, "presentation", MimeType.GOOGLE_SLIDES);
     } 
+    // 2. Word to PDF (New)
+    else if (data.action === "convert_word") {
+      return convertFile(data, "document", MimeType.GOOGLE_DOCS);
+    }
     
-    // 2. Feedback / Contact Form (Append to Sheet)
+    // 3. Feedback / General
     else {
-       // Default to Sheet 1
        var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-       sheet.appendRow([
-         new Date(), 
-         data.type || "General", 
-         data.message || JSON.stringify(data),
-         data.contact || ""
-       ]);
+       sheet.appendRow([new Date(), data.type || "General", data.message || JSON.stringify(data), data.contact || ""]);
        return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
     }
     
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
-    
   } finally {
     lock.releaseLock();
   }
 }
 
-function convertPPTX(data) {
+function convertFile(data, type, targetMimeType) {
   try {
-    // 1. Decode Base64 File
-    var blob = Utilities.newBlob(
-      Utilities.base64Decode(data.fileData), 
-      "application/vnd.openxmlformats-officedocument.presentationml.presentation", 
-      data.fileName
-    );
+    // Determine Source MimeType
+    var sourceMime = "application/octet-stream";
+    if (type === "presentation") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    if (type === "document") {
+       if (data.fileName.toLowerCase().endsWith(".doc")) sourceMime = "application/msword";
+       else sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    }
+
+    // 1. Decode Base64
+    var blob = Utilities.newBlob(Utilities.base64Decode(data.fileData), sourceMime, data.fileName);
     
-    // 2. Save to Drive & Convert
-    // Support both Drive API v2 (insert) and v3 (create)
+    // 2. Save & Convert (Support v2 and v3)
     var file;
     if (Drive.Files.insert) {
-      // API v2
-      var resource = { title: data.fileName, mimeType: MimeType.GOOGLE_SLIDES };
+      // v2
+      var resource = { title: data.fileName, mimeType: targetMimeType };
       file = Drive.Files.insert(resource, blob);
     } else if (Drive.Files.create) {
-      // API v3
-      var resource = { name: data.fileName, mimeType: MimeType.GOOGLE_SLIDES };
+      // v3
+      var resource = { name: data.fileName, mimeType: targetMimeType };
       file = Drive.Files.create(resource, blob);
     } else {
       throw new Error("Drive API not found. Please add 'Drive API' in Services.");
@@ -73,14 +71,14 @@ function convertPPTX(data) {
     var pdfBlob = DriveApp.getFileById(fileId).getAs('application/pdf');
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
     
-    // 4. Cleanup (Delete temp file)
+    // 4. Cleanup
     DriveApp.getFileById(fileId).setTrashed(true);
     
-    // 5. Return Result
+    // 5. Return
     return ContentService.createTextOutput(JSON.stringify({ 
       status: 'success', 
-      pdf: pdfBase64,
-      name: data.fileName.replace('.pptx', '.pdf')
+      pdf: pdfBase64, 
+      name: data.fileName.replace(/\.(pptx|docx|doc)$/i, '.pdf')
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (e) {
