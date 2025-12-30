@@ -7,7 +7,7 @@
     <title>DataVector - Free Online PDF Tools & Search</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=nixtio">
 
     <!-- Libraries for Tool functionality -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -21,13 +21,16 @@
 </head>
 
 <body>
+    <div id="preloader">
+        <div class="loader-logo">DataVector</div>
+    </div>
+    <canvas id="bgCanvas"></canvas>
 
     <!-- Header -->
-    <header>
+    <header class="scroll-hidden">
         <a href="index.html" class="logo">
             DataVector
         </a>
-        <div class="status-indicator">● READY_FOR_INPUT</div>
         <button class="mobile-menu-btn"
             onclick="document.querySelector('.nav-links').classList.toggle('active')">☰</button>
         <nav class="nav-links">
@@ -71,19 +74,19 @@
     </header>
 
     <!-- Hero -->
-    <section class="hero">
+    <section class="hero scroll-hidden">
         <h1>Essential tools for your documents and files</h1>
         <p>Merge, split, and convert PDFs instantly. Plus, discover resources with our open directory search.</p>
     </section>
 
     <!-- Tool Grid -->
-    <main class="tool-grid" id="toolGrid">
+    <main class="tool-grid scroll-hidden" id="toolGrid">
         <!-- Tools will be injected here by JS -->
         <div class="tool-card" style="opacity:0.5;">Loading tools...</div>
     </main>
 
     <!-- Feedback Section -->
-    <section class="feedback-section">
+    <section class="feedback-section scroll-hidden">
         <div class="feedback-content">
             <h2>📢 Report Glitches & Feedback</h2>
             <p>Found a bug? Have a suggestion? Tell us directly. We read every message.</p>
@@ -183,6 +186,7 @@
             });
     </script>
     <script type="module" src="js/app.js"></script>
+    <script src="js/bg-animation.js"></script>
 </body>
 
 </html>

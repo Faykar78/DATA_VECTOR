@@ -20,6 +20,33 @@ const getUrlParam = (param) => {
 // --- Initializer ---
 document.addEventListener('DOMContentLoaded', async () => {
 
+    // 0. Preloader Logic
+    const preloader = document.getElementById('preloader');
+    if (preloader) {
+        // Wait at least 1s for the feel, or until window loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                preloader.classList.add('preloader-hidden');
+            }, 800);
+        });
+        // Fallback safety
+        setTimeout(() => { preloader.classList.add('preloader-hidden'); }, 3000);
+    }
+
+    // 0.5 Scroll Animations (Nixtio Style)
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('scroll-visible');
+                // Optional: Unobserve after revealing? Nixtio usually keeps them visible once shown.
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.1, rootMargin: "0px 0px -50px 0px" });
+
+    document.querySelectorAll('.scroll-hidden').forEach(el => observer.observe(el));
+
+
     // 1. Identify Page
     const isToolPage = !!document.getElementById('toolTitle');
     const isResultPage = !!document.getElementById('resultTitle');
@@ -94,13 +121,13 @@ function renderFileInterface(container, tool) {
     const isScan = tool.id === 'scan-pdf';
 
     let html = `
-        <img src="${tool.icon}" style="width:64px; height:64px; margin-bottom:1rem;">
-        <h3 style="margin-bottom:1.5rem;">Select ${label}</h3>
-        <div style="display:flex; gap:10px; justify-content:center;">
+        <img src="${tool.icon}" class="tool-icon-large">
+        <h3>Select ${label}</h3>
+        <div class="dropzone-actions">
             <button class="btn-primary-xl">Select ${label}</button>
-            ${isScan ? `<button id="btnCamera" class="btn-primary-xl" style="background:#ef4444;">📷 Camera</button>` : ''}
+            ${isScan ? `<button id="btnCamera" class="btn-primary-xl btn-danger">📷 Camera</button>` : ''}
         </div>
-        <p style="margin-top:1rem; opacity:0.6;">or drop files here</p>
+        <p class="dropzone-hint">or drop files here</p>
         <input type="file" multiple style="display:none;" accept="${tool.accept}">
         ${isScan ? `<input type="file" id="cameraInput" capture="environment" accept="image/*" style="display:none;">` : ''}
     `;
@@ -255,18 +282,18 @@ async function renderPageSelector(file, action) {
     document.getElementById('toolHeader').style.display = 'none';
 
     actionArea.innerHTML = `
-        <div style="width:100%; max-width:1000px;">
-            <h2 style="margin-bottom:1rem; text-align:center;">Select Pages</h2>
-            <p style="text-align:center; color:#666; margin-bottom:1.5rem;">
+        <div class="page-selector-container">
+            <h2>Select Pages</h2>
+            <p class="selector-hint">
                 ${action === 'remove' ? 'Select pages to DELETE' : 'Select pages to KEEP/EXTRACT'}
             </p>
             
-            <div id="pageGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap:15px; max-height:60vh; overflow-y:auto; padding:10px; background:#f1f5f9; border-radius:12px;">
+            <div id="pageGrid" class="page-grid">
                 <p>Loading pages...</p>
             </div>
             
-            <div style="display:flex; justify-content:center; gap:15px; margin-top:2rem;">
-                <button class="btn-primary-xl" style="background:#64748b;" onclick="location.reload()">Cancel</button>
+            <div class="selector-actions">
+                <button class="btn-secondary" onclick="location.reload()">Cancel</button>
                 <button class="btn-primary-xl" onclick="executePageAction('${action}')">
                     ${action.toUpperCase()} Selected Pages
                 </button>
@@ -507,12 +534,12 @@ function handleResult(resultBlob, filenameDefault) {
     document.getElementById('toolDesc').textContent = "Your file has been processed successfully.";
 
     spaOutput.innerHTML = `
-         <div style="padding: 2rem; background: #f8fafc; border-radius: 12px; border: 2px dashed #cbd5e1;">
-            <p style="margin-bottom: 1rem; color: var(--text-light);">
+         <div class="result-card">
+            <p>
                 Your file is ready to download.<br>
-                <strong style="color:#22c55e;">Size: ${fileSize} MB</strong>
+                <strong class="result-size">Size: ${fileSize} MB</strong>
             </p>
-            <button id="downloadBtn" class="btn-primary-xl" style="cursor:pointer; border:none;">
+            <button id="downloadBtn" class="btn-primary-xl">
                 ⬇️ Download File
             </button>
          </div>

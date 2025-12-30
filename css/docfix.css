@@ -1,26 +1,25 @@
 :root {
-    --df-bg: #050505;
-    --df-panel: #0a0a0a;
-    --df-accent: #ff00ff;
-    /* Pink Primary */
-    --df-accent-strong: #d900d9;
-    --df-text-main: #e0e0e0;
-    --df-text-soft: #888;
-    --df-border: #333;
-    --df-success: #00ff00;
-    /* Green Status */
+    --df-bg: #030303;
+    --df-panel: #0f0f0f;
+    --df-hover: #161616;
+    --df-accent: #0047FF;
+    --df-accent-glow: rgba(0, 71, 255, 0.4);
+    --df-text-main: #ffffff;
+    --df-text-muted: #888888;
+    --df-border: rgba(255, 255, 255, 0.08);
+    --df-radius: 32px;
 }
 
 .df-shell {
-    max-width: 1080px;
+    max-width: 1200px;
     margin: 0 auto;
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: 'Inter', sans-serif;
 }
 
 .df-panel-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    gap: 20px;
+    gap: 32px;
 }
 
 @media (max-width: 900px) {
@@ -32,7 +31,8 @@
 .df-panel {
     background: var(--df-panel);
     border: 1px solid var(--df-border);
-    padding: 20px;
+    border-radius: var(--df-radius);
+    padding: 32px;
     color: var(--df-text-main);
 }
 
@@ -40,158 +40,157 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px dashed var(--df-border);
-    padding-bottom: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 32px;
 }
 
 .df-panel-title {
-    color: var(--df-accent);
-    text-transform: uppercase;
-    font-size: 1rem;
-    letter-spacing: 1px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
 }
 
 /* Tabs */
 .df-tabs {
-    display: flex;
-    gap: 10px;
+    display: inline-flex;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 100px;
+    padding: 4px;
+    border: 1px solid var(--df-border);
 }
 
 .df-tab {
     background: transparent;
-    border: 1px solid var(--df-border);
-    color: var(--df-text-soft);
-    padding: 5px 15px;
+    border: none;
+    color: var(--df-text-muted);
+    padding: 8px 16px;
+    border-radius: 100px;
     cursor: pointer;
-    font-family: inherit;
-    text-transform: uppercase;
-    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
 }
 
 .df-tab.active {
-    border-color: var(--df-accent);
-    color: var(--df-accent);
-    box-shadow: 0 0 5px rgba(255, 0, 255, 0.2);
+    background: var(--df-accent);
+    color: white;
+    box-shadow: 0 4px 12px var(--df-accent-glow);
 }
 
 /* Fields */
 .df-field-label {
-    color: var(--df-success);
-    font-size: 0.9rem;
-    margin-bottom: 8px;
     display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: var(--df-text-main);
+    font-weight: 500;
 }
 
 .df-panel input[type="number"],
 .df-panel select {
-    background: #000;
+    background: var(--df-hover);
     border: 1px solid var(--df-border);
     color: var(--df-text-main);
-    padding: 8px;
-    font-family: inherit;
+    padding: 12px 16px;
+    border-radius: 16px;
     width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
 }
 
 .df-panel input:focus,
 .df-panel select:focus {
-    border-color: var(--df-success);
-    outline: none;
+    border-color: var(--df-accent);
 }
 
 /* Drop Zone */
 .df-file-drop-inner {
     border: 2px dashed var(--df-border);
-    padding: 20px;
+    padding: 32px;
+    border-radius: 24px;
     text-align: center;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.01);
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 16px;
+    transition: all 0.2s;
 }
 
 .df-file-drop-inner:hover {
-    border-color: var(--df-success);
-    background: rgba(0, 255, 0, 0.05);
+    border-color: var(--df-accent);
+    background: rgba(0, 71, 255, 0.05);
+}
+
+.df-file-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--df-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--df-accent);
+    font-size: 1.2rem;
 }
 
 .df-file-title {
-    color: var(--df-text-main);
-    font-weight: bold;
+    font-weight: 600;
+    font-size: 1rem;
 }
 
-/* Buttons */
+/* Actions */
 .df-actions-row {
-    margin-top: 20px;
+    margin-top: 32px;
     display: flex;
-    gap: 15px;
+    gap: 16px;
 }
 
 .df-btn-primary {
-    background: transparent;
-    border: 1px solid var(--df-success);
-    color: var(--df-success);
-    padding: 10px 20px;
-    text-transform: uppercase;
-    font-weight: bold;
-    cursor: pointer;
-    font-family: inherit;
+    background: var(--df-accent);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    padding: 14px 28px;
+    font-weight: 600;
     flex: 1;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.2s;
 }
 
 .df-btn-primary:hover {
-    background: var(--df-success);
-    color: #000;
-    box-shadow: 0 0 10px var(--df-success);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px var(--df-accent-glow);
 }
 
 .df-btn-ghost {
     background: transparent;
-    border: 1px solid var(--df-text-soft);
-    color: var(--df-text-soft);
-    padding: 10px 20px;
+    border: 1px solid var(--df-border);
+    color: var(--df-text-main);
+    border-radius: 100px;
+    padding: 14px 28px;
     cursor: pointer;
-    font-family: inherit;
-    text-transform: uppercase;
+    font-weight: 500;
 }
 
 .df-btn-ghost:hover {
-    border-color: var(--df-text-main);
-    color: var(--df-text-main);
-}
-
-/* Alert */
-.df-alert {
-    margin-top: 15px;
-    padding: 10px;
-    border: 1px solid;
-    font-size: 0.9rem;
-}
-
-.df-alert--info {
-    border-color: var(--df-accent);
-    color: var(--df-accent);
-    background: rgba(255, 0, 255, 0.05);
+    background: var(--df-hover);
 }
 
 /* Preview */
 .df-preview-card {
-    background: #000;
+    background: var(--df-hover);
+    border-radius: 24px;
+    padding: 24px;
     border: 1px solid var(--df-border);
-    padding: 10px;
 }
 
 .df-preview-frame {
-    background: #111;
-    border: 1px solid #333;
-    min-height: 200px;
+    background: #000;
+    border-radius: 16px;
+    min-height: 240px;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-}
-
-.df-preview-placeholder {
-    color: var(--df-text-soft);
+    margin-top: 16px;
+    border: 1px solid var(--df-border);
 }
