@@ -3,7 +3,7 @@ import SearchEngine from './tools/search.js';
 
 // --- Configuration ---
 // TO USER: Replace this URL with your deployed Google Apps Script URL.
-window.GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxtEDI1e73uIdnOQ5DiECcgBdipeyJUltJnCzF5zDbt4EVwuv3G2lQfoW8Li_i6fxTDHA/exec';
+window.GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyhY0HheFeo7V0g4M4uunhsJmoZ9uLNtJXDKa6Ifb1BL4xYM2GOSO5efs1JKROmktv/exec';
 
 // --- Shared State ---
 const state = {
