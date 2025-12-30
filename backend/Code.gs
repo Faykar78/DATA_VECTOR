@@ -1,12 +1,10 @@
-// Google Apps Script Code for DataVector Backend
+// Google Apps Script Code for DataVector Backend  
 // Deploy this as a Web App (Execute as: Me, Who has access: Anyone)
 
 function doPost(e) {
-  DriveApp.getRootFolder(); // Scope trigger
-  var lock = LockService.getScriptLock();
-  lock.tryLock(10000); 
-
   try {
+    DriveApp.getRootFolder(); // Scope trigger
+    
     var data = {};
     if (e.postData && e.postData.contents) {
       data = JSON.parse(e.postData.contents);
@@ -19,57 +17,52 @@ function doPost(e) {
       return convertFile(data, "document");
     }
     else {
-       var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-       sheet.appendRow([new Date(), data.type || "General", data.message || JSON.stringify(data), data.contact || ""]);
        return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
     }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
-  } finally {
-    lock.releaseLock();
   }
 }
 
 function convertFile(data, type) {
   var convertedId;
+  
+  if (typeof Drive === 'undefined') {
+      throw new Error("CRITICAL: Drive API Service NOT enabled. Click 'Services +' and add 'Drive API'.");
+  }
+
   try {
-    // 1. Determine Source MimeType Correctly
-    var sourceMime = "application/octet-stream";
-    if (type === "presentation") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-    if (type === "document") {
-       if (data.fileName.toLowerCase().endsWith(".doc")) sourceMime = "application/msword";
-       else sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    }
-
-    // 2. Prepare Blob
-    // Ensure Base64 is clean
     var cleanBase64 = data.fileData.replace(/\s/g, ''); 
-    var blob = Utilities.newBlob(Utilities.base64Decode(cleanBase64), sourceMime, data.fileName);
-    var token = ScriptApp.getOAuthToken();
+    var decoded = Utilities.base64Decode(cleanBase64);
+    
+    // Determine MIME types
+    var ext = data.fileName.split('.').pop().toLowerCase();
+    var sourceMime = "application/octet-stream";
+    if (ext === "docx") sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    else if (ext === "doc") sourceMime = "application/msword";
+    else if (ext === "pptx") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
-    // STRATEGY: Simple Media Upload V2 (Raw Binary + Convert Flag)
-    // Minimizes metadata errors.
-    var url = "https://www.googleapis.com/upload/drive/v2/files?uploadType=media&convert=true";
+    var blob = Utilities.newBlob(decoded, sourceMime, data.fileName);
+    var targetMime = (type === "presentation" ? "application/vnd.google-apps.presentation" : "application/vnd.google-apps.document");
     
-    var response = UrlFetchApp.fetch(url, {
-       method: 'post',
-       headers: { 
-          'Authorization': 'Bearer ' + token, 
-          'Content-Type': sourceMime // Tells Google what we are sending
-       },
-       payload: blob, // Send raw body
-       muteHttpExceptions: true
-    });
+    // Try conversion based on API version
+    var file;
     
-    if (response.getResponseCode() >= 400) throw new Error("Upload Error: " + response.getContentText());
+    if (Drive.Files.insert) {
+       // V2 API
+       file = Drive.Files.insert({ title: data.fileName, mimeType: targetMime }, blob, { convert: true });
+    } 
+    else if (Drive.Files.create) {
+       // V3 API - Direct conversion during create
+       file = Drive.Files.create({ name: data.fileName, mimeType: targetMime }, blob);
+    }
+    else {
+       throw new Error("Unknown Drive API version.");
+    }
     
-    var json = JSON.parse(response.getContentText());
-    convertedId = json.id;
-    
-    // 3. Rename (Optional, but good for debugging in Drive)
-    try { DriveApp.getFileById(convertedId).setName(data.fileName); } catch(e){}
-    
-    // 4. Export as PDF
+    convertedId = file.id;
+
+    // Export to PDF
     var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
     
@@ -78,16 +71,38 @@ function convertFile(data, type) {
       pdf: pdfBase64, 
       name: data.fileName.replace(/\.(pptx|docx|doc)$/i, '.pdf')
     })).setMimeType(ContentService.MimeType.JSON);
-    
+
   } catch (e) {
-    throw new Error("Conversion Failed: " + e.toString());
+    var errMsg = e.toString();
+    if (errMsg.indexOf("Bad Request") > -1 || errMsg.indexOf("Conversion") > -1) {
+       throw new Error("FILE REJECTED: Google Drive refuses to convert '" + data.fileName + "'. This file may be password-protected, corrupted, or use unsupported features. Try: (1) Run testBackend() to verify system works (2) Use a different/simpler DOCX file (3) Open in Word and Save As new file.");
+    }
+    throw new Error("Conversion Error: " + errMsg);
   } finally {
-    if (convertedId) try { DriveApp.getFileById(convertedId).setTrashed(true); } catch(e){}
+     if (convertedId) try { DriveApp.getFileById(convertedId).setTrashed(true); } catch(e){}
   }
 }
-function doGet(e) {
-  return ContentService.createTextOutput("DataVector Backend is Running.");
+
+// DIAGNOSTIC: Run this in the editor to test if conversion works at all
+function testBackend() {
+  try {
+    // Create simple test doc
+    var blob = Utilities.newBlob("Hello World Test Document", "application/msword", "TEST.doc");
+    var data = { 
+       fileData: Utilities.base64Encode(blob.getBytes()), 
+       fileName: "TEST.doc" 
+    };
+    var result = convertFile(data, "document");
+    Logger.log("✅ TEST SUCCESS! System CAN convert files. Your uploaded file is the issue.");
+    Logger.log("PDF Length: " + result.getContent().length + " bytes");
+    return "SUCCESS";
+  } catch(e) {
+    Logger.log("❌ TEST FAILED: " + e.toString());
+    Logger.log("This means your Google account/setup has an issue, not just the file.");
+    return "FAILED";
+  }
 }
+
 function forceAuth() {
   UrlFetchApp.fetch("https://www.google.com");
   DriveApp.getRootFolder();
