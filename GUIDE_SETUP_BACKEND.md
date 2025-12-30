@@ -47,30 +47,44 @@ function convertFile(data, type) {
   }
 
   try {
-    var detectedMime = "application/octet-stream";
+    // 1. Prepare Content
     var cleanBase64 = data.fileData.replace(/\s/g, ''); 
     var decoded = Utilities.base64Decode(cleanBase64);
-    var blob = Utilities.newBlob(decoded, "application/octet-stream", data.fileName);
     
-    // Determine Target
+    // 2. Strict Source MIME (Critical for V3)
+    var ext = data.fileName.split('.').pop().toLowerCase();
+    var sourceMime = "application/octet-stream";
+    if (ext === "docx") sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    else if (ext === "doc") sourceMime = "application/msword";
+    else if (ext === "pptx") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+    var blob = Utilities.newBlob(decoded, sourceMime, data.fileName);
     var targetMime = (type === "presentation" ? "application/vnd.google-apps.presentation" : "application/vnd.google-apps.document");
     
-    // SMART STRATEGY: Detect V2 vs V3
+    // 3. Smart Strategy: V2 vs V3
     var file;
     
     if (Drive.Files.insert) {
-       // Drive API v2 (The 'insert' method)
-       var resource = { title: data.fileName, mimeType: targetMime };
-       file = Drive.Files.insert(resource, blob, { convert: true });
+       // Drive API v2: insert(resource, blob, options)
+       file = Drive.Files.insert({ title: data.fileName, mimeType: targetMime }, blob, { convert: true });
     } 
     else if (Drive.Files.create) {
-       // Drive API v3 (The 'create' method)
-       // V3 uses 'name' instead of 'title'
-       var resource = { name: data.fileName, mimeType: targetMime }; 
-       file = Drive.Files.create(resource, blob); 
+       // Drive API v3: create(resource, blob)
+       // Direct conversion requires strict Mime Match.
+       try {
+           file = Drive.Files.create({ name: data.fileName, mimeType: targetMime }, blob);
+       } catch (v3Err) {
+           // Fallback for V3: Upload Native -> Copy to Convert
+           // If direct create fails (Bad Request), upload as Native first
+           var nativeFile = Drive.Files.create({ name: data.fileName, mimeType: sourceMime }, blob);
+           var nativeId = nativeFile.id;
+           file = Drive.Files.copy({ name: data.fileName, mimeType: targetMime }, nativeId);
+           // Cleanup Native
+           try { Drive.Files.delete(nativeId); } catch(e){} 
+       }
     }
     else {
-       throw new Error("Unknown Drive API version. Methods 'insert' and 'create' are missing.");
+       throw new Error("Unknown Drive API version.");
     }
     
     convertedId = file.id;
@@ -120,9 +134,7 @@ function forceAuth() {
 ## 3. Run Self-Test
 1.  Select the **`testBackend`** function from the dropdown.
 2.  Click **Run**.
-3.  Check the **Execution Log**.
-    *   If it says **"Test Success!"**, the backend is ready.
-    *   If it says **"Drive API Service is NOT enabled"**, repeast Step 2.
+3.  If **Test Success**, you are ready.
 
 ## 4. Deploy
 1.  Click **Deploy** > **Manage Deployments**.
