@@ -2,6 +2,9 @@
 // Deploy this as a Web App (Execute as: Me, Who has access: Anyone)
 
 function doPost(e) {
+  // Ensure DriveApp is used to trigger scope
+  DriveApp.getRootFolder(); 
+  
   var lock = LockService.getScriptLock();
   lock.tryLock(10000); 
 
@@ -13,12 +16,11 @@ function doPost(e) {
       data = e.parameter;
     }
 
-    // --- ROUTER ---
     if (data.action === "convert_pptx") {
-      return convertFile(data, "presentation", MimeType.GOOGLE_SLIDES);
+      return convertFile(data, "presentation", "application/vnd.google-apps.presentation");
     } 
     else if (data.action === "convert_word") {
-      return convertFile(data, "document", MimeType.GOOGLE_DOCS);
+      return convertFile(data, "document", "application/vnd.google-apps.document");
     }
     else {
        var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
@@ -35,40 +37,44 @@ function doPost(e) {
 function convertFile(data, type, targetMimeType) {
   var tempId, convertedId;
   try {
-    // Determine Source MimeType
+    // 1. Determine Source MimeType
     var sourceMime = "application/octet-stream";
-    if (type === "presentation") {
-       sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-    }
+    if (type === "presentation") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     if (type === "document") {
        if (data.fileName.toLowerCase().endsWith(".doc")) sourceMime = "application/msword";
        else sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     }
 
+    // 2. Upload using Standard DriveApp (No Advanced Service needed)
     var blob = Utilities.newBlob(Utilities.base64Decode(data.fileData), sourceMime, data.fileName);
+    var tempFile = DriveApp.createFile(blob);
+    tempId = tempFile.getId();
     
-    // STRATEGY: 2-Step (Upload Native -> Copy to Google Format) to avoid V3 creation errors
+    // 3. Convert using Direct REST API (Bypassing GAS Wrapper confusion)
+    var token = ScriptApp.getOAuthToken();
+    var url = "https://www.googleapis.com/drive/v3/files/" + tempId + "/copy";
     
-    // 1. Upload Native File
-    var tempFile;
-    if (Drive.Files.insert) {
-      tempFile = Drive.Files.insert({title: data.fileName, mimeType: sourceMime}, blob);
-    } else {
-      tempFile = Drive.Files.create({name: data.fileName, mimeType: sourceMime}, blob);
+    var response = UrlFetchApp.fetch(url, {
+       method: 'post',
+       headers: {
+         'Authorization': 'Bearer ' + token,
+         'Content-Type': 'application/json'
+       },
+       payload: JSON.stringify({
+         name: data.fileName,
+         mimeType: targetMimeType // Trigger conversion
+       }),
+       muteHttpExceptions: true
+    });
+    
+    if (response.getResponseCode() >= 400) {
+        throw new Error("Drive API Error: " + response.getContentText());
     }
-    tempId = tempFile.id;
     
-    // 2. Convert via Copy
-    var copyResource = { 
-      name: data.fileName, 
-      mimeType: targetMimeType // Use Google MIME type to force conversion
-    };
-    if (Drive.Files.insert) copyResource.title = copyResource.name; // V2 compat
+    var json = JSON.parse(response.getContentText());
+    convertedId = json.id;
     
-    var convertedFile = Drive.Files.copy(copyResource, tempId);
-    convertedId = convertedFile.id;
-    
-    // 3. Export as PDF
+    // 4. Export as PDF
     var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
     
@@ -81,7 +87,7 @@ function convertFile(data, type, targetMimeType) {
   } catch (e) {
     throw new Error("Conversion Failed: " + e.toString());
   } finally {
-    // Cleanup BOTH files
+    // Cleanup
     if (tempId) DriveApp.getFileById(tempId).setTrashed(true);
     if (convertedId) DriveApp.getFileById(convertedId).setTrashed(true);
   }
