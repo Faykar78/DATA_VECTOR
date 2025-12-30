@@ -23,10 +23,10 @@ function doPost(e) {
     } 
 
     if (data.action === "convert_pptx") {
-      return convertFile(data, "presentation", "application/vnd.google-apps.presentation");
+      return convertFile(data, "presentation");
     } 
     else if (data.action === "convert_word") {
-      return convertFile(data, "document", "application/vnd.google-apps.document");
+      return convertFile(data, "document");
     }
     else {
        var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
@@ -40,10 +40,10 @@ function doPost(e) {
   }
 }
 
-function convertFile(data, type, targetMimeType) {
+function convertFile(data, type) {
   var convertedId;
   try {
-    // 1. Determine Source MimeType
+    // 1. Determine Source MimeType Correctly
     var sourceMime = "application/octet-stream";
     if (type === "presentation") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     if (type === "document") {
@@ -51,45 +51,35 @@ function convertFile(data, type, targetMimeType) {
        else sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     }
 
-    var blob = Utilities.newBlob(Utilities.base64Decode(data.fileData), sourceMime, data.fileName);
+    // 2. Prepare Blob
+    // Ensure Base64 is clean
+    var cleanBase64 = data.fileData.replace(/\s/g, ''); 
+    var blob = Utilities.newBlob(Utilities.base64Decode(cleanBase64), sourceMime, data.fileName);
     var token = ScriptApp.getOAuthToken();
 
-    // STRATEGY: Resumable Upload V3 (Init Metadata -> Put Content)
+    // STRATEGY: Simple Media Upload V2 (Raw Binary + Convert Flag)
+    // Minimizes metadata errors.
+    var url = "https://www.googleapis.com/upload/drive/v2/files?uploadType=media&convert=true";
     
-    // 1. Init Session (Send Metadata)
-    var initUrl = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable";
-    var initParams = {
+    var response = UrlFetchApp.fetch(url, {
        method: 'post',
        headers: { 
           'Authorization': 'Bearer ' + token, 
-          'Content-Type': 'application/json' 
+          'Content-Type': sourceMime // Tells Google what we are sending
        },
-       payload: JSON.stringify({
-          name: data.fileName,
-          mimeType: targetMimeType // Trigger conversion
-       }),
+       payload: blob, // Send raw body
        muteHttpExceptions: true
-    };
-    var initRes = UrlFetchApp.fetch(initUrl, initParams);
-    if (initRes.getResponseCode() >= 400) throw new Error("Init Upload Failed: " + initRes.getContentText());
+    });
     
-    var uploadUrl = initRes.getHeaders()['Location'];
+    if (response.getResponseCode() >= 400) throw new Error("Upload Error: " + response.getContentText());
     
-    // 2. Upload Content (PUT)
-    var uploadParams = {
-       method: 'put',
-       payload: blob,
-       headers: { 'Content-Type': sourceMime },
-       muteHttpExceptions: true
-    };
-    var uploadRes = UrlFetchApp.fetch(uploadUrl, uploadParams);
-    
-    if (uploadRes.getResponseCode() >= 400) throw new Error("Upload Failed: " + uploadRes.getContentText());
-    
-    var json = JSON.parse(uploadRes.getContentText());
+    var json = JSON.parse(response.getContentText());
     convertedId = json.id;
     
-    // 3. Export as PDF
+    // 3. Rename (Optional, but good for debugging in Drive)
+    try { DriveApp.getFileById(convertedId).setName(data.fileName); } catch(e){}
+    
+    // 4. Export as PDF
     var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
     
@@ -105,9 +95,12 @@ function convertFile(data, type, targetMimeType) {
     if (convertedId) try { DriveApp.getFileById(convertedId).setTrashed(true); } catch(e){}
   }
 }
-
 function doGet(e) {
   return ContentService.createTextOutput("DataVector Backend is Running.");
+}
+function forceAuth() {
+  UrlFetchApp.fetch("https://www.google.com");
+  DriveApp.getRootFolder();
 }
 function forceAuth() {
   UrlFetchApp.fetch("https://www.google.com");

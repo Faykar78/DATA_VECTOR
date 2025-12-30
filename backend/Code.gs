@@ -10,9 +10,7 @@ function doPost(e) {
     var data = {};
     if (e.postData && e.postData.contents) {
       data = JSON.parse(e.postData.contents);
-    } else if (e.parameter) {
-      data = e.parameter;
-    }
+    } 
 
     if (data.action === "convert_pptx") {
       return convertFile(data, "presentation");
@@ -33,9 +31,9 @@ function doPost(e) {
 }
 
 function convertFile(data, type) {
-  var tempId, convertedId;
+  var convertedId;
   try {
-    // 1. Determine Source MimeType
+    // 1. Determine Source MimeType Correctly
     var sourceMime = "application/octet-stream";
     if (type === "presentation") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     if (type === "document") {
@@ -43,33 +41,33 @@ function convertFile(data, type) {
        else sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     }
 
-    // 2. Upload using Standard DriveApp
-    var blob = Utilities.newBlob(Utilities.base64Decode(data.fileData), sourceMime, data.fileName);
-    var tempFile = DriveApp.createFile(blob);
-    tempId = tempFile.getId();
-    
-    // 3. Convert using Drive API V2 REST (Explicit convert=true is more reliable than V3)
+    // 2. Prepare Blob
+    // Ensure Base64 is clean
+    var cleanBase64 = data.fileData.replace(/\s/g, ''); 
+    var blob = Utilities.newBlob(Utilities.base64Decode(cleanBase64), sourceMime, data.fileName);
     var token = ScriptApp.getOAuthToken();
-    var url = "https://www.googleapis.com/drive/v2/files/" + tempId + "/copy?convert=true";
+
+    // STRATEGY: Simple Media Upload V2 (Raw Binary + Convert Flag)
+    // Minimizes metadata errors.
+    var url = "https://www.googleapis.com/upload/drive/v2/files?uploadType=media&convert=true";
     
     var response = UrlFetchApp.fetch(url, {
        method: 'post',
-       headers: {
-         'Authorization': 'Bearer ' + token,
-         'Content-Type': 'application/json'
+       headers: { 
+          'Authorization': 'Bearer ' + token, 
+          'Content-Type': sourceMime // Tells Google what we are sending
        },
-       payload: JSON.stringify({
-         title: data.fileName.replace(/\.[^/.]+$/, "") // Remove extension for Google Doc title
-       }),
+       payload: blob, // Send raw body
        muteHttpExceptions: true
     });
     
-    if (response.getResponseCode() >= 400) {
-        throw new Error("Drive API v2 Error: " + response.getContentText());
-    }
+    if (response.getResponseCode() >= 400) throw new Error("Upload Error: " + response.getContentText());
     
     var json = JSON.parse(response.getContentText());
     convertedId = json.id;
+    
+    // 3. Rename (Optional, but good for debugging in Drive)
+    try { DriveApp.getFileById(convertedId).setName(data.fileName); } catch(e){}
     
     // 4. Export as PDF
     var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
@@ -84,12 +82,13 @@ function convertFile(data, type) {
   } catch (e) {
     throw new Error("Conversion Failed: " + e.toString());
   } finally {
-    // Cleanup
-    if (tempId) try { DriveApp.getFileById(tempId).setTrashed(true); } catch(e){}
     if (convertedId) try { DriveApp.getFileById(convertedId).setTrashed(true); } catch(e){}
   }
 }
-
 function doGet(e) {
   return ContentService.createTextOutput("DataVector Backend is Running.");
+}
+function forceAuth() {
+  UrlFetchApp.fetch("https://www.google.com");
+  DriveApp.getRootFolder();
 }
