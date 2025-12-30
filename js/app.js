@@ -1,4 +1,4 @@
-import PDFActions from './tools/pdf-lib.js';
+import PDFActions from './tools/pdf-lib.js?v=2';
 import SearchEngine from './tools/search.js';
 
 // --- Configuration ---
