@@ -173,8 +173,10 @@
 
                     card.innerHTML = `
                         <img src="${tool.icon}" alt="${tool.title}" class="tool-icon">
-                        <h3>${tool.title}</h3>
-                        <p>${tool.desc}</p>
+                        <div class="tool-card-content">
+                            <h3>${tool.title}</h3>
+                            <p>${tool.desc}</p>
+                        </div>
                     `;
                     grid.appendChild(card);
                 });
