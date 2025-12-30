@@ -39,35 +39,20 @@ function doPost(e) {
 function convertFile(data, type) {
   var convertedId;
   try {
-    // 1. Strict MIME Mapping
-    var ext = data.fileName.split('.').pop().toLowerCase();
+    // 1. Generic Octet Stream (Let Drive Sniff)
+    // We purposefully don't specify "docx" mime to avoid "Bad Request" on mismatch.
     var sourceMime = "application/octet-stream";
-    var targetMime = "application/vnd.google-apps.document"; // default
-    
-    if (ext === "docx") {
-       sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-       targetMime = "application/vnd.google-apps.document";
-    }
-    else if (ext === "doc") {
-       sourceMime = "application/msword";
-       targetMime = "application/vnd.google-apps.document";
-    }
-    else if (ext === "pptx") {
-       sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-       targetMime = "application/vnd.google-apps.presentation";
-    }
-
-    // 2. Prepare Clean Base64
-    var cleanBase64 = data.fileData.replace(/\s/g, ''); 
     var token = ScriptApp.getOAuthToken();
-    
-    // STRATEGY: Drive API v3 Multipart Upload
-    // We explicitly state "I am uploading a DOXC and want a GOOGLE DOC"
+    var cleanBase64 = data.fileData.replace(/\s/g, ''); 
+
+    // STRATEGY: Drive API v2 Multipart (Legacy & Robust)
+    // Metadata: Request Google Doc Format
+    // Content: Generic Stream + Base64
     
     var boundary = "xxxxxxxxxx";
     var metadata = {
-      name: data.fileName,
-      mimeType: targetMime // Request explicit conversion
+      title: data.fileName,
+      mimeType: (type === "presentation" ? "application/vnd.google-apps.presentation" : "application/vnd.google-apps.document")
     };
     
     // Multipart Body
@@ -81,7 +66,8 @@ function convertFile(data, type) {
       cleanBase64 + "\r\n" + 
       "--" + boundary + "--";
 
-    var url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"; // V3 Import
+    // V2 Upload URL with convert=true
+    var url = "https://www.googleapis.com/upload/drive/v2/files?uploadType=multipart&convert=true";
     
     var response = UrlFetchApp.fetch(url, {
        method: 'post',
@@ -94,7 +80,7 @@ function convertFile(data, type) {
     });
     
     if (response.getResponseCode() >= 400) {
-        throw new Error("Upload Error (Mime: " + sourceMime + "): " + response.getContentText());
+        throw new Error("Upload Error (V2 Multipart): " + response.getContentText());
     }
     
     var json = JSON.parse(response.getContentText());
