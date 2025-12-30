@@ -53,15 +53,20 @@ function convertPPTX(data) {
       data.fileName
     );
     
-    // 2. Save to Drive (converts to Google Slides automatically? No, need to specify MimeType)
-    // Actually, inserting with MimeType.GOOGLE_SLIDES triggers conversion
-    var resource = { 
-      title: data.fileName, 
-      mimeType: MimeType.GOOGLE_SLIDES 
-    };
-    
-    // Enable Drive API in Services!
-    var file = Drive.Files.insert(resource, blob);
+    // 2. Save to Drive & Convert
+    // Support both Drive API v2 (insert) and v3 (create)
+    var file;
+    if (Drive.Files.insert) {
+      // API v2
+      var resource = { title: data.fileName, mimeType: MimeType.GOOGLE_SLIDES };
+      file = Drive.Files.insert(resource, blob);
+    } else if (Drive.Files.create) {
+      // API v3
+      var resource = { name: data.fileName, mimeType: MimeType.GOOGLE_SLIDES };
+      file = Drive.Files.create(resource, blob);
+    } else {
+      throw new Error("Drive API not found. Please add 'Drive API' in Services.");
+    }
     
     // 3. Export as PDF
     var fileId = file.id;

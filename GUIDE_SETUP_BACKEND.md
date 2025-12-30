@@ -38,10 +38,20 @@ function convertPPTX(data) {
   // 1. Decode File
   var blob = Utilities.newBlob(Utilities.base64Decode(data.fileData), "application/vnd.openxmlformats-officedocument.presentationml.presentation", data.fileName);
   
-  // 2. Save to Drive (requires Drive API)
-  // NOTE: You must enable "Drive API" in "Services" (Left Sidebar + button)
-  var resource = { title: data.fileName, mimeType: MimeType.GOOGLE_SLIDES };
-  var file = Drive.Files.insert(resource, blob);
+  // 2. Save to Drive & Convert
+  // Support both Drive API v2 (insert) and v3 (create)
+  var file;
+  if (Drive.Files.insert) {
+    // API v2
+    var resource = { title: data.fileName, mimeType: MimeType.GOOGLE_SLIDES };
+    file = Drive.Files.insert(resource, blob);
+  } else if (Drive.Files.create) {
+    // API v3
+    var resource = { name: data.fileName, mimeType: MimeType.GOOGLE_SLIDES };
+    file = Drive.Files.create(resource, blob);
+  } else {
+    throw new Error("Drive API not found. Please add 'Drive API' in Services.");
+  }
   
   // 3. Export as PDF
   var fileId = file.id;
