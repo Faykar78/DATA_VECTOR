@@ -2,9 +2,7 @@
 // Deploy this as a Web App (Execute as: Me, Who has access: Anyone)
 
 function doPost(e) {
-  // Ensure DriveApp is used to trigger scope
-  DriveApp.getRootFolder(); 
-  
+  DriveApp.getRootFolder(); // Scope trigger
   var lock = LockService.getScriptLock();
   lock.tryLock(10000); 
 
@@ -17,10 +15,10 @@ function doPost(e) {
     }
 
     if (data.action === "convert_pptx") {
-      return convertFile(data, "presentation", "application/vnd.google-apps.presentation");
+      return convertFile(data, "presentation");
     } 
     else if (data.action === "convert_word") {
-      return convertFile(data, "document", "application/vnd.google-apps.document");
+      return convertFile(data, "document");
     }
     else {
        var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
@@ -34,7 +32,7 @@ function doPost(e) {
   }
 }
 
-function convertFile(data, type, targetMimeType) {
+function convertFile(data, type) {
   var tempId, convertedId;
   try {
     // 1. Determine Source MimeType
@@ -45,14 +43,14 @@ function convertFile(data, type, targetMimeType) {
        else sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     }
 
-    // 2. Upload using Standard DriveApp (No Advanced Service needed)
+    // 2. Upload using Standard DriveApp
     var blob = Utilities.newBlob(Utilities.base64Decode(data.fileData), sourceMime, data.fileName);
     var tempFile = DriveApp.createFile(blob);
     tempId = tempFile.getId();
     
-    // 3. Convert using Direct REST API (Bypassing GAS Wrapper confusion)
+    // 3. Convert using Drive API V2 REST (Explicit convert=true is more reliable than V3)
     var token = ScriptApp.getOAuthToken();
-    var url = "https://www.googleapis.com/drive/v3/files/" + tempId + "/copy";
+    var url = "https://www.googleapis.com/drive/v2/files/" + tempId + "/copy?convert=true";
     
     var response = UrlFetchApp.fetch(url, {
        method: 'post',
@@ -61,14 +59,13 @@ function convertFile(data, type, targetMimeType) {
          'Content-Type': 'application/json'
        },
        payload: JSON.stringify({
-         name: data.fileName,
-         mimeType: targetMimeType // Trigger conversion
+         title: data.fileName.replace(/\.[^/.]+$/, "") // Remove extension for Google Doc title
        }),
        muteHttpExceptions: true
     });
     
     if (response.getResponseCode() >= 400) {
-        throw new Error("Drive API Error: " + response.getContentText());
+        throw new Error("Drive API v2 Error: " + response.getContentText());
     }
     
     var json = JSON.parse(response.getContentText());
@@ -88,8 +85,8 @@ function convertFile(data, type, targetMimeType) {
     throw new Error("Conversion Failed: " + e.toString());
   } finally {
     // Cleanup
-    if (tempId) DriveApp.getFileById(tempId).setTrashed(true);
-    if (convertedId) DriveApp.getFileById(convertedId).setTrashed(true);
+    if (tempId) try { DriveApp.getFileById(tempId).setTrashed(true); } catch(e){}
+    if (convertedId) try { DriveApp.getFileById(convertedId).setTrashed(true); } catch(e){}
   }
 }
 
