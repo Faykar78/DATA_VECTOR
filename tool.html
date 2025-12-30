@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataVector - Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Libraries for Tool functionality -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/meshesha/PPTXjs@1.21.1/dist/pptxjs.css">
+    <script src="https://cdn.jsdelivr.net/gh/meshesha/PPTXjs@1.21.1/dist/pptxjs.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>if (window.pdfjsLib) window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+</head>
+
+<body>
+
+    <header>
+        <a href="index.html" class="logo"><span>🔹</span> DataVector</a>
+        <button class="mobile-menu-btn"
+            onclick="document.querySelector('.nav-links').classList.toggle('active')">☰</button>
+        <nav class="nav-links">
+            <a href="index.html" style="font-size:0.9rem; opacity:0.7;">&larr; Back to Tools</a>
+        </nav>
+    </header>
+
+    <div class="tool-interface">
+        <div class="tool-header-inner" id="toolHeader">
+            <h1 id="toolTitle">Loading Tool...</h1>
+            <p id="toolDesc">Please wait...</p>
+        </div>
+
+        <div class="action-area" id="actionArea">
+            <!-- Dynamic Content Injected Here -->
+        </div>
+
+        <!-- Hidden Results Section (SPA Flow for Files) -->
+        <div class="action-area" id="resultsSection"
+            style="display: none; flex-direction: column; align-items: center; gap: 20px;">
+            <div id="spaOutput" style="width: 100%; max-width: 800px; text-align: center;">
+                <!-- content injected here -->
+            </div>
+            <div style="margin-top: 2rem;">
+                <button id="btnReset" class="btn-primary-xl"
+                    style="background: white; color: var(--text-dark); border: 2px solid #eee; font-size: 1rem; padding: 0.8rem 2rem;">Process
+                    another file</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- PDF Libs (CDN) -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+
+    <!-- App Logic -->
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

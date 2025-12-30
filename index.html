@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataVector - Free Online PDF Tools & Search</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Libraries for Tool functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://pl28349863.effectivegatecpm.com/1d/a1/d4/1da1d410397c50945812d50d2647f8e1.js"></script>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <a href="index.html" class="logo">
+            <span>🔹</span> DataVector
+        </a>
+        <button class="mobile-menu-btn"
+            onclick="document.querySelector('.nav-links').classList.toggle('active')">☰</button>
+        <nav class="nav-links">
+            <div class="dropdown">
+                <a href="#merge" class="dropbtn">MERGE PDF</a>
+                <div class="dropdown-content">
+                    <a href="tool.html?id=merge-pdf">Merge PDF Files</a>
+                </div>
+            </div>
+            <div class="dropdown">
+                <a href="#split" class="dropbtn">SPLIT PDF</a>
+                <div class="dropdown-content">
+                    <a href="tool.html?id=split-pdf">Split PDF Files</a>
+                </div>
+            </div>
+            <div class="dropdown">
+                <a href="#convert" class="dropbtn">CONVERT PDF</a>
+                <div class="dropdown-content grid-menu">
+                    <div class="menu-col">
+                        <span>Convert To PDF</span>
+                        <a href="tool.html?id=jpg-to-pdf">JPG to PDF</a>
+                        <a href="tool.html?id=word-to-pdf">WORD to PDF</a>
+                        <a href="tool.html?id=powerpoint-to-pdf">POWERPOINT to PDF</a>
+                        <a href="tool.html?id=excel-to-pdf">EXCEL to PDF</a>
+                        <a href="tool.html?id=html-to-pdf">HTML to PDF</a>
+                    </div>
+                </div>
+            </div>
+            <div class="dropdown">
+                <a href="#search" class="dropbtn">SEARCH TOOLS</a>
+                <div class="dropdown-content">
+                    <a href="tool.html?id=od-search">Open Directories</a>
+                    <a href="tool.html?id=web-search">Web Search</a>
+                </div>
+            </div>
+        </nav>
+        <div class="nav-actions">
+            <a href="#" class="btn-login">Login</a>
+            <a href="#" class="btn-signup">Sign up</a>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+        <h1>Essential tools for your documents and files</h1>
+        <p>Merge, split, and convert PDFs instantly. Plus, discover resources with our open directory search.</p>
+    </section>
+
+    <!-- Tool Grid -->
+    <main class="tool-grid" id="toolGrid">
+        <!-- Tools will be injected here by JS -->
+        <div class="tool-card" style="opacity:0.5;">Loading tools...</div>
+    </main>
+
+    <!-- Feedback Section -->
+    <section class="feedback-section">
+        <div class="feedback-content">
+            <h2>📢 Report Glitches & Feedback</h2>
+            <p>Found a bug? Have a suggestion? Tell us directly. We read every message.</p>
+
+            <form id="feedbackForm" onsubmit="submitFeedback(event)">
+                <div class="form-group">
+                    <select id="feedbackType" required>
+                        <option value="" disabled selected>Select Category</option>
+                        <option value="Glitch/Bug">Report a Glitch / Bug</option>
+                        <option value="Feature Request">Request a Feature</option>
+                        <option value="Other">Other Feedback</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <textarea id="feedbackMsg" rows="4" placeholder="Describe the issue or idea..." required></textarea>
+                </div>
+                <button type="submit" class="btn-primary-xl"
+                    style="font-size: 1rem; padding: 0.8rem 2rem; width:100%;">Submit Feedback</button>
+            </form>
+            <div id="feedbackStatus" style="margin-top:10px; font-weight:bold;"></div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-cols">
+            <div class="footer-col">
+                <h4>DataVector</h4>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="pages/about.html">About Us</a></li>
+                    <li><a href="pages/contact.html">Contact</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Product</h4>
+                <ul>
+                    <li><a href="#">Pricing</a></li>
+                    <li><a href="#">Desktop</a></li>
+                    <li><a href="#">Mobile</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Solutions</h4>
+                <ul>
+                    <li><a href="#">Business</a></li>
+                    <li><a href="#">Education</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="pages/terms.html">Terms & Conditions</a></li>
+                    <li><a href="pages/privacy.html">Privacy Policy</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            &copy; 2024 DataVector. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        // Inline script to load tools for speed, fully implemented in app.js later
+        fetch('data/tools.json?v=' + Date.now())
+            .then(res => res.json())
+            .then(tools => {
+                const grid = document.getElementById('toolGrid');
+                grid.innerHTML = '';
+                tools.forEach(tool => {
+                    const card = document.createElement('a');
+
+                    // Special routing for customized pages
+                    if (tool.id === 'docfix-tool') {
+                        card.href = 'docfix.html';
+                    } else {
+                        card.href = `tool.html?id=${tool.id}`;
+                    }
+
+                    card.className = 'tool-card';
+                    card.onclick = (e) => {
+                        // Regular tools need localStorage for safety, separate pages don't
+                        if (tool.id !== 'docfix-tool') {
+                            localStorage.setItem('activeToolId', tool.id);
+                        }
+                    };
+
+                    card.innerHTML = `
+                        <img src="${tool.icon}" alt="${tool.title}" class="tool-icon">
+                        <h3>${tool.title}</h3>
+                        <p>${tool.desc}</p>
+                    `;
+                    grid.appendChild(card);
+                });
+            });
+    </script>
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

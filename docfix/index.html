@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DocFix – Online Photo & Signature Size Fixer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1258563757256615"
+     crossorigin="anonymous"></script>
+</head>
+<body>
+  <div class="bg-orbit"></div>
+  <div class="bg-orbit bg-orbit--2"></div>
+
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <h1>DocFix<span class="accent">.</span></h1>
+        <p class="hero-sub">
+          Resize, compress &amp; format photos, signatures and documents for online forms –
+          <strong>right in your browser</strong>. No uploads, no logins, no watermarks.
+        </p>
+      </div>
+      <div class="hero-badge">
+        <span class="dot"></span>
+        Processing is done locally in your browser.
+      </div>
+    </header>
+
+    <!-- AdSense responsive ad block -->
+    <div class="ad-wrapper">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-1258563757256615"
+           data-ad-slot="0000000000"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+
+    <section class="panel-grid">
+      <section class="panel panel--main">
+        <div class="panel-header">
+          <div class="tabs" id="modeTabs">
+            <button class="tab active" data-mode="photo">Photo</button>
+            <button class="tab" data-mode="signature">Signature</button>
+            <button class="tab" data-mode="custom">Custom</button>
+          </div>
+          <span class="preset-label" id="presetLabel">Preset: Exam-style passport photo</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="field-group">
+            <label class="field-label">Upload image</label>
+            <label class="file-drop" for="fileInput">
+              <input type="file" id="fileInput" accept="image/*" hidden />
+              <div class="file-drop-inner" id="fileDropZone">
+                <div class="file-icon">📁</div>
+                <div>
+                  <div class="file-title">Drop an image here or click to browse</div>
+                  <div class="file-hint">JPG, PNG or WebP</div>
+                </div>
+              </div>
+            </label>
+            <div class="file-meta" id="fileMeta">No file selected.</div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">Output options</label>
+            <div class="field-row">
+              <div class="field">
+                <span class="field-caption">Width (px)</span>
+                <input type="number" id="widthInput" min="10" value="200" />
+              </div>
+              <div class="field">
+                <span class="field-caption">Height (px)</span>
+                <input type="number" id="heightInput" min="10" value="230" />
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <span class="field-caption">Max size (KB)</span>
+                <input type="number" id="maxKbInput" min="1" value="50" />
+              </div>
+              <div class="field">
+                <span class="field-caption">Min size (KB) <span class="muted">(optional)</span></span>
+                <input type="number" id="minKbInput" min="0" placeholder="e.g. 20" />
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <span class="field-caption">Format</span>
+                <select id="formatSelect">
+                  <option value="image/jpeg">JPEG (.jpg)</option>
+                  <option value="image/png">PNG (.png)</option>
+                  <option value="image/webp">WebP (.webp)</option>
+                </select>
+              </div>
+              <div class="field">
+                <span class="field-caption">Background</span>
+                <div class="chip-row" id="bgChips">
+                  <button class="chip chip--active" data-color="#ffffff">White</button>
+                  <button class="chip" data-color="#e0f2fe">Light blue</button>
+                  <button class="chip" data-color="custom">Custom</button>
+                  <input type="color" id="bgColorCustom" value="#ffffff" class="color-input" />
+                </div>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <span class="field-caption">Fit mode</span>
+                <select id="fitMode">
+                  <option value="contain">Contain (no crop)</option>
+                  <option value="cover">Cover (center crop)</option>
+                </select>
+              </div>
+              <div class="field">
+                <span class="field-caption">Edge smoothing</span>
+                <select id="qualityPreset">
+                  <option value="high">High quality</option>
+                  <option value="balanced" selected>Balanced</option>
+                  <option value="small">Smaller size</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button id="processBtn" class="btn-primary">
+            <span>⚙️ Generate output</span>
+          </button>
+          <button id="downloadBtn" class="btn-ghost" disabled>
+            ⬇️ Download result
+          </button>
+          <span class="hint">
+            Tip: change width/height &amp; max KB to match exam / portal requirements.
+          </span>
+        </div>
+
+        <div id="errorBox" class="alert alert--error" style="display:none;"></div>
+        <div id="infoBox" class="alert alert--info" style="display:none;"></div>
+      </section>
+
+      <section class="panel panel--side">
+        <h2 class="panel-title">Preview &amp; stats</h2>
+        <div class="preview-grid">
+          <div class="preview-card">
+            <h3>Input</h3>
+            <div class="preview-frame">
+              <img id="inputPreview" alt="Input preview" />
+              <span class="preview-placeholder" id="inputPlaceholder">No image loaded</span>
+            </div>
+            <div class="preview-meta" id="inputMeta">—</div>
+          </div>
+          <div class="preview-card">
+            <h3>Output</h3>
+            <div class="preview-frame">
+              <canvas id="outputCanvas"></canvas>
+              <span class="preview-placeholder" id="outputPlaceholder">Generate to see result</span>
+            </div>
+            <div class="preview-meta" id="outputMeta">—</div>
+          </div>
+        </div>
+
+        <div class="mini-note">
+          <strong>Important:</strong> All processing is done with HTML5 Canvas inside your browser.
+          Your files are <strong>not uploaded</strong> to any server.
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

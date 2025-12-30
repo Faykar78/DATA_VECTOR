@@ -1,0 +1,7 @@
+name = "mute-meadow-4b82"
+compatibility_date = "2024-09-23"
+
+# Serve static assets from the current directory
+[assets]
+directory = "."
+

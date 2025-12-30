@@ -1,0 +1,11 @@
+{
+    "name": "datavector-pdf-tools",
+    "version": "1.0.0",
+    "description": "Local development server for DataVector",
+    "scripts": {
+        "start": "npx serve ."
+    },
+    "dependencies": {
+        "serve": "^14.2.0"
+    }
+}
