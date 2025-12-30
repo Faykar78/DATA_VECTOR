@@ -193,9 +193,27 @@ async function handleFiles(fileList) {
 
     state.files = Array.from(fileList);
 
-    // Show processing UI
+    // Show processing UI with animated progress bar
     const actionArea = document.getElementById('actionArea');
-    actionArea.innerHTML = `<h2>Processing ${state.files.length} file(s)...</h2><p>Please wait, handling data...</p>`;
+    actionArea.innerHTML = `
+        <div class="processing-container">
+            <h2>Processing ${state.files.length} file(s)...</h2>
+            <div class="progress-bar-container">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <p class="progress-text">Converting to PDF...</p>
+            </div>
+        </div>
+    `;
+
+    // Animate progress bar
+    setTimeout(() => {
+        const progressFill = document.querySelector('.progress-fill');
+        if (progressFill) {
+            progressFill.style.width = '90%'; // Simulate progress
+        }
+    }, 100);
 
     // Process
     try {
