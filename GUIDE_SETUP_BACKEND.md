@@ -37,76 +37,44 @@ function doPost(e) {
 }
 
 function convertFile(data, type) {
-  var tempId, convertedId;
+  var tempId;
   try {
     // 1. Strict MIME Mapping
     var ext = data.fileName.split('.').pop().toLowerCase();
     var sourceMime = "application/octet-stream";
-    var targetMime = "application/vnd.google-apps.document";
     
-    if (ext === "docx") {
-       sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-       targetMime = "application/vnd.google-apps.document";
-    }
-    else if (ext === "doc") {
-       sourceMime = "application/msword";
-       targetMime = "application/vnd.google-apps.document";
-    }
-    else if (ext === "pptx") {
-       sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-       targetMime = "application/vnd.google-apps.presentation";
-    }
+    // Strict mimes help DriveApp understand the file
+    if (ext === "docx") sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    else if (ext === "doc") sourceMime = "application/msword";
+    else if (ext === "pptx") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
-    // 2. Create Temp File via DriveApp
+    // 2. Create Temp File via DriveApp (Native Upload)
     var cleanBase64 = data.fileData.replace(/\s/g, ''); 
     var blob = Utilities.newBlob(Utilities.base64Decode(cleanBase64), sourceMime, data.fileName);
     var tempFile = DriveApp.createFile(blob);
     tempId = tempFile.getId();
     
-    // DEBUG: Verify MimeType
-    var detectedMime = tempFile.getMimeType();
-    
-    // 3. Convert using Drive API V3 Copy (Explicit Conversion)
-    // We explicitly tell Drive to change the MIME type to Google Doc/Slide
-    var token = ScriptApp.getOAuthToken();
-    var url = "https://www.googleapis.com/drive/v3/files/" + tempId + "/copy";
-    
-    var response = UrlFetchApp.fetch(url, {
-       method: 'post',
-       headers: { 
-          'Authorization': 'Bearer ' + token, 
-          'Content-Type': 'application/json' 
-       },
-       payload: JSON.stringify({ 
-          name: data.fileName.replace(/\.[^/.]+$/, ""),
-          mimeType: targetMime // TRIGGER CONVERSION
-       }),
-       muteHttpExceptions: true
-    });
-    
-    if (response.getResponseCode() >= 400) {
-        throw new Error("V3 Copy Error (" + response.getResponseCode() + ") Detected Mime: " + detectedMime + " Msg: " + response.getContentText());
+    // 3. Direct PDF Export via DriveApp
+    // This attempts to use Drive's internal export engine without explicit API calls
+    try {
+      var pdfBlob = tempFile.getAs('application/pdf');
+      var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
+      
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: 'success', 
+        pdf: pdfBase64, 
+        name: data.fileName.replace(/\.(pptx|docx|doc)$/i, '.pdf')
+      })).setMimeType(ContentService.MimeType.JSON);
+      
+    } catch (exportErr) {
+       // If Direct Export fails, throw specific error with MIME info
+       throw new Error("Direct Export Failed: " + exportErr.toString() + " (Mime: " + tempFile.getMimeType() + ")");
     }
-    
-    var json = JSON.parse(response.getContentText());
-    convertedId = json.id;
-    
-    // 4. Export as PDF
-    var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
-    var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
-    
-    return ContentService.createTextOutput(JSON.stringify({ 
-      status: 'success', 
-      pdf: pdfBase64, 
-      name: data.fileName.replace(/\.(pptx|docx|doc)$/i, '.pdf')
-    })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (e) {
     throw new Error("Conversion Failed: " + e.toString());
   } finally {
-    // Cleanup
     if (tempId) try { DriveApp.getFileById(tempId).setTrashed(true); } catch(e){}
-    if (convertedId) try { DriveApp.getFileById(convertedId).setTrashed(true); } catch(e){}
   }
 }
 
