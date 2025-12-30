@@ -1,13 +1,16 @@
-# 🛠️ Setup Backend for High-Quality Conversion
+# Backend Setup Guide for DataVector
 
-Since client-side conversion is limited, we will use **Google Apps Script** (Free & Robust) to handle PPTX-to-PDF conversion.
+This guide explains how to set up the Google Apps Script backend which handles reliable file conversions (PPTX/Word to PDF).
 
 ## 1. Create the Script
-1. Go to [script.google.com](https://script.google.com/).
-2. Click **New Project**.
-3. Replace the `Code.gs` content with the following:
+1.  Go to [script.google.com](https://script.google.com/) and create a **New Project**.
+2.  Name it "DataVector Backend".
+3.  Delete any code in `Code.gs` and paste the following:
 
 ```javascript
+// Google Apps Script Code for DataVector Backend
+// Deploy this as a Web App (Execute as: Me, Who has access: Anyone)
+
 function doPost(e) {
   DriveApp.getRootFolder(); // Scope trigger
   var lock = LockService.getScriptLock();
@@ -17,15 +20,13 @@ function doPost(e) {
     var data = {};
     if (e.postData && e.postData.contents) {
       data = JSON.parse(e.postData.contents);
-    } else if (e.parameter) {
-      data = e.parameter;
-    }
+    } 
 
     if (data.action === "convert_pptx") {
-      return convertFile(data, "presentation");
+      return convertFile(data, "presentation", "application/vnd.google-apps.presentation");
     } 
     else if (data.action === "convert_word") {
-      return convertFile(data, "document");
+      return convertFile(data, "document", "application/vnd.google-apps.document");
     }
     else {
        var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
@@ -39,8 +40,8 @@ function doPost(e) {
   }
 }
 
-function convertFile(data, type) {
-  var tempId, convertedId;
+function convertFile(data, type, targetMimeType) {
+  var convertedId;
   try {
     // 1. Determine Source MimeType
     var sourceMime = "application/octet-stream";
@@ -50,35 +51,45 @@ function convertFile(data, type) {
        else sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     }
 
-    // 2. Upload using Standard DriveApp
     var blob = Utilities.newBlob(Utilities.base64Decode(data.fileData), sourceMime, data.fileName);
-    var tempFile = DriveApp.createFile(blob);
-    tempId = tempFile.getId();
-    
-    // 3. Convert using Drive API V2 REST (Explicit convert=true is more reliable than V3)
     var token = ScriptApp.getOAuthToken();
-    var url = "https://www.googleapis.com/drive/v2/files/" + tempId + "/copy?convert=true";
+
+    // STRATEGY: Resumable Upload V3 (Init Metadata -> Put Content)
     
-    var response = UrlFetchApp.fetch(url, {
+    // 1. Init Session (Send Metadata)
+    var initUrl = "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable";
+    var initParams = {
        method: 'post',
-       headers: {
-         'Authorization': 'Bearer ' + token,
-         'Content-Type': 'application/json'
+       headers: { 
+          'Authorization': 'Bearer ' + token, 
+          'Content-Type': 'application/json' 
        },
        payload: JSON.stringify({
-         title: data.fileName.replace(/\.[^/.]+$/, "") // Remove extension for Google Doc title
+          name: data.fileName,
+          mimeType: targetMimeType // Trigger conversion
        }),
        muteHttpExceptions: true
-    });
+    };
+    var initRes = UrlFetchApp.fetch(initUrl, initParams);
+    if (initRes.getResponseCode() >= 400) throw new Error("Init Upload Failed: " + initRes.getContentText());
     
-    if (response.getResponseCode() >= 400) {
-        throw new Error("Drive API v2 Error: " + response.getContentText());
-    }
+    var uploadUrl = initRes.getHeaders()['Location'];
     
-    var json = JSON.parse(response.getContentText());
+    // 2. Upload Content (PUT)
+    var uploadParams = {
+       method: 'put',
+       payload: blob,
+       headers: { 'Content-Type': sourceMime },
+       muteHttpExceptions: true
+    };
+    var uploadRes = UrlFetchApp.fetch(uploadUrl, uploadParams);
+    
+    if (uploadRes.getResponseCode() >= 400) throw new Error("Upload Failed: " + uploadRes.getContentText());
+    
+    var json = JSON.parse(uploadRes.getContentText());
     convertedId = json.id;
     
-    // 4. Export as PDF
+    // 3. Export as PDF
     var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
     
@@ -91,27 +102,32 @@ function convertFile(data, type) {
   } catch (e) {
     throw new Error("Conversion Failed: " + e.toString());
   } finally {
-    // Cleanup
-    if (tempId) try { DriveApp.getFileById(tempId).setTrashed(true); } catch(e){}
     if (convertedId) try { DriveApp.getFileById(convertedId).setTrashed(true); } catch(e){}
   }
 }
+
+function doGet(e) {
+  return ContentService.createTextOutput("DataVector Backend is Running.");
+}
+function forceAuth() {
+  UrlFetchApp.fetch("https://www.google.com");
+  DriveApp.getRootFolder();
+}
 ```
 
-## 2. Enable Drive API service
-1. On the left sidebar, click the **"+"** next to **Services**.
-2. Select **Drive API**.
-3. Click **Add**.
+## 2. Authorization
+1.  **Save** the file.
+2.  Select `forceAuth` function in the dropdown.
+3.  Click **Run**.
+4.  Accept permissions.
 
-## 3. Deploy
-1. Click **Deploy** (Top Right) > **New Deployment**.
-2. Select type: **Web app**.
-3. Description: `PPTX Backend`.
-4. Execute as: **Me**.
-5. Who has access: **Anyone** (Critical!).
-6. Click **Deploy**.
-7. **Copy the Web App URL** (ends in `/exec`).
+## 3. Enable Drive API Service (Still Recommended)
+Although this script uses `UrlFetchApp`, it's best practice to:
+1.  Click **Services +** on the left.
+2.  Add **Drive API**.
 
-## 4. Connect to DataVector
-1. Open `js/app.js` in your project.
-2. Replace `const GOOGLE_SCRIPT_URL` with your **NEW** URL.
+## 4. Deploy
+1.  Click **Deploy** > **Manage Deployments**.
+2.  Click **Edit** (pencil icon).
+3.  **New Version**.
+4.  **Deploy**.
