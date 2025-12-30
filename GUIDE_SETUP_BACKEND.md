@@ -39,44 +39,57 @@ function doPost(e) {
 function convertFile(data, type) {
   var convertedId;
   try {
-    // 1. Use Generic MIME Types (Safer for Conversion)
+    // 1. Determine MimeType
     var sourceMime = "application/octet-stream";
-    if (type === "presentation") sourceMime = "application/vnd.ms-powerpoint"; // Legacy PPT generic
-    if (type === "document") sourceMime = "application/msword"; // Legacy DOC generic (works for DOCX too)
+    if (type === "presentation") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    if (type === "document") sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    // Fallback for .doc
+    if (data.fileName.toLowerCase().endsWith(".doc")) sourceMime = "application/msword";
 
-    // 2. Prepare Blob & Debug Size
+    // 2. Prepare Clean Base64
     var cleanBase64 = data.fileData.replace(/\s/g, ''); 
-    var decoded = Utilities.base64Decode(cleanBase64);
-    var blob = Utilities.newBlob(decoded, sourceMime, data.fileName);
-    
-    if (decoded.length < 100) throw new Error("File is empty or too small (" + decoded.length + " bytes)");
-
     var token = ScriptApp.getOAuthToken();
 
-    // STRATEGY: Simple Media Upload V2 (Raw Binary + Convert Flag)
-    var url = "https://www.googleapis.com/upload/drive/v2/files?uploadType=media&convert=true";
+    // STRATEGY: Multipart/Related Upload with Base64 Encoding
+    // Sends Metadata + Base64 Content directly (No binary conversion issues)
+    
+    var boundary = "xxxxxxxxxx";
+    var metadata = {
+      title: data.fileName,
+      mimeType: sourceMime
+    };
+    
+    // Construct Multipart Body (String)
+    var payload = 
+      "--" + boundary + "\r\n" + 
+      "Content-Type: application/json; charset=UTF-8\r\n\r\n" + 
+      JSON.stringify(metadata) + "\r\n" + 
+      "--" + boundary + "\r\n" + 
+      "Content-Type: " + sourceMime + "\r\n" + 
+      "Content-Transfer-Encoding: base64\r\n\r\n" + 
+      cleanBase64 + "\r\n" + 
+      "--" + boundary + "--";
+
+    var url = "https://www.googleapis.com/upload/drive/v2/files?uploadType=multipart&convert=true";
     
     var response = UrlFetchApp.fetch(url, {
        method: 'post',
        headers: { 
           'Authorization': 'Bearer ' + token, 
-          'Content-Type': sourceMime 
+          'Content-Type': "multipart/related; boundary=" + boundary 
        },
-       payload: blob, 
+       payload: payload, 
        muteHttpExceptions: true
     });
     
     if (response.getResponseCode() >= 400) {
-        throw new Error("Upload Error (Size: " + decoded.length + ", Mime: " + sourceMime + "): " + response.getContentText());
+        throw new Error("Upload Error (Size: " + cleanBase64.length + "): " + response.getContentText());
     }
     
     var json = JSON.parse(response.getContentText());
     convertedId = json.id;
     
-    // 3. Rename
-    try { DriveApp.getFileById(convertedId).setName(data.fileName.replace(/\.(pptx|docx|doc)$/i, '')); } catch(e){}
-    
-    // 4. Export as PDF
+    // 3. Export as PDF
     var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
     
