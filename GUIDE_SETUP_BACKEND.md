@@ -40,6 +40,7 @@ function doPost(e) {
 }
 
 function convertFile(data, type, targetMimeType) {
+  var tempId, convertedId;
   try {
     // Determine Source MimeType
     var sourceMime = "application/octet-stream";
@@ -49,32 +50,33 @@ function convertFile(data, type, targetMimeType) {
        else sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     }
 
-    // 1. Decode Base64
     var blob = Utilities.newBlob(Utilities.base64Decode(data.fileData), sourceMime, data.fileName);
     
-    // 2. Save & Convert (Support v2 and v3)
-    var file;
+    // STRATEGY: 2-Step (Upload Native -> Copy to Google Format) to avoid V3 creation errors
+    
+    // 1. Upload Native File
+    var tempFile;
     if (Drive.Files.insert) {
-      // v2
-      var resource = { title: data.fileName, mimeType: targetMimeType };
-      file = Drive.Files.insert(resource, blob);
-    } else if (Drive.Files.create) {
-      // v3
-      var resource = { name: data.fileName, mimeType: targetMimeType };
-      file = Drive.Files.create(resource, blob);
+      tempFile = Drive.Files.insert({title: data.fileName, mimeType: sourceMime}, blob);
     } else {
-      throw new Error("Drive API not found. Please add 'Drive API' in Services.");
+      tempFile = Drive.Files.create({name: data.fileName, mimeType: sourceMime}, blob);
     }
+    tempId = tempFile.id;
+    
+    // 2. Convert via Copy
+    var copyResource = { 
+      name: data.fileName, 
+      mimeType: targetMimeType // Use Google MIME type to force conversion
+    };
+    if (Drive.Files.insert) copyResource.title = copyResource.name; // V2 compat
+    
+    var convertedFile = Drive.Files.copy(copyResource, tempId);
+    convertedId = convertedFile.id;
     
     // 3. Export as PDF
-    var fileId = file.id;
-    var pdfBlob = DriveApp.getFileById(fileId).getAs('application/pdf');
+    var pdfBlob = DriveApp.getFileById(convertedId).getAs('application/pdf');
     var pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
     
-    // 4. Cleanup
-    DriveApp.getFileById(fileId).setTrashed(true);
-    
-    // 5. Return
     return ContentService.createTextOutput(JSON.stringify({ 
       status: 'success', 
       pdf: pdfBase64, 
@@ -83,6 +85,10 @@ function convertFile(data, type, targetMimeType) {
     
   } catch (e) {
     throw new Error("Conversion Failed: " + e.toString());
+  } finally {
+    // Cleanup BOTH files
+    if (tempId) DriveApp.getFileById(tempId).setTrashed(true);
+    if (convertedId) DriveApp.getFileById(convertedId).setTrashed(true);
   }
 }
 ```
