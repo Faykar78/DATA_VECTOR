@@ -42,10 +42,20 @@ function convertFile(data, type) {
     // 1. Strict MIME Mapping
     var ext = data.fileName.split('.').pop().toLowerCase();
     var sourceMime = "application/octet-stream";
+    var targetMime = "application/vnd.google-apps.document";
     
-    if (ext === "docx") sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    else if (ext === "doc") sourceMime = "application/msword";
-    else if (ext === "pptx") sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    if (ext === "docx") {
+       sourceMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+       targetMime = "application/vnd.google-apps.document";
+    }
+    else if (ext === "doc") {
+       sourceMime = "application/msword";
+       targetMime = "application/vnd.google-apps.document";
+    }
+    else if (ext === "pptx") {
+       sourceMime = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+       targetMime = "application/vnd.google-apps.presentation";
+    }
 
     // 2. Create Temp File via DriveApp
     var cleanBase64 = data.fileData.replace(/\s/g, ''); 
@@ -56,9 +66,10 @@ function convertFile(data, type) {
     // DEBUG: Verify MimeType
     var detectedMime = tempFile.getMimeType();
     
-    // 3. Convert using Drive API V2 Copy
+    // 3. Convert using Drive API V3 Copy (Explicit Conversion)
+    // We explicitly tell Drive to change the MIME type to Google Doc/Slide
     var token = ScriptApp.getOAuthToken();
-    var url = "https://www.googleapis.com/drive/v2/files/" + tempId + "/copy?convert=true";
+    var url = "https://www.googleapis.com/drive/v3/files/" + tempId + "/copy";
     
     var response = UrlFetchApp.fetch(url, {
        method: 'post',
@@ -66,12 +77,15 @@ function convertFile(data, type) {
           'Authorization': 'Bearer ' + token, 
           'Content-Type': 'application/json' 
        },
-       payload: JSON.stringify({ title: data.fileName.replace(/\.[^/.]+$/, "") }),
+       payload: JSON.stringify({ 
+          name: data.fileName.replace(/\.[^/.]+$/, ""),
+          mimeType: targetMime // TRIGGER CONVERSION
+       }),
        muteHttpExceptions: true
     });
     
     if (response.getResponseCode() >= 400) {
-        throw new Error("API Error (" + response.getResponseCode() + ") Mime: " + detectedMime + " Msg: " + response.getContentText());
+        throw new Error("V3 Copy Error (" + response.getResponseCode() + ") Detected Mime: " + detectedMime + " Msg: " + response.getContentText());
     }
     
     var json = JSON.parse(response.getContentText());
