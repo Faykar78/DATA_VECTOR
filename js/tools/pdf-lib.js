@@ -225,47 +225,45 @@ const PDFActions = {
                 container.innerHTML = doc.body ? doc.body.innerHTML : text;
 
             } else if (ext === 'pptx') {
-                if (typeof $ === 'undefined') {
-                    throw new Error("jQuery not loaded. Please check your connection or ad-blocker.");
-                }
-                if (!$.fn.pptxToHtml) {
-                    // Try to wait a moment in case it's race condition
-                    await new Promise(r => setTimeout(r, 1000));
-                    if (!$.fn.pptxToHtml) {
-                        throw new Error("PPTXjs library failed to load. Please refresh.");
-                    }
+                if (!window.GOOGLE_SCRIPT_URL) {
+                    // Fallback check if passed or global
+                    throw new Error("PPTX Backend URL not configured. Please see GUIDE_SETUP_BACKEND.md");
                 }
 
-                const blobUrl = URL.createObjectURL(file);
+                // Show uploading status (optional, but good UX)
+                container.innerHTML = "<h2>Converting on Server...</h2><p>This may take a few seconds.</p>";
+                container.style.zIndex = '10000';
+                container.style.left = '0';
+                container.style.top = '100px';
 
-                // Use a Promise to wait for PPTXjs to render
-                await new Promise((resolve, reject) => {
-                    const $container = $(container);
+                // 1. Get Base64
+                const dataUrl = await PDFActions.readFileAsDataURL(file);
+                const base64 = dataUrl.split(',')[1];
 
-                    $container.pptxToHtml({
-                        pptxFileUrl: blobUrl,
-                        slidesScale: "100%",
-                        slideMode: false,
-                        keyBoardShortCut: false
-                    });
-
-                    // Poll for completion since callback support varies
-                    let attempts = 0;
-                    const checkRender = setInterval(() => {
-                        attempts++;
-                        // Check if slides are rendered (PPTXjs creates .slide class or similar)
-                        if ($container.find('.slide').length > 0 || $container.find('.slides').length > 0) {
-                            clearInterval(checkRender);
-                            // Give a bit more time for images to load
-                            setTimeout(resolve, 1000);
-                        } else if (attempts > 100) { // 10 seconds timeout
-                            clearInterval(checkRender);
-                            reject(new Error("PPTX conversion timed out"));
-                        }
-                    }, 100);
+                // 2. Call API
+                const response = await fetch(window.GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        action: 'convert_pptx',
+                        fileData: base64,
+                        fileName: file.name
+                    })
                 });
 
-                URL.revokeObjectURL(blobUrl);
+                const result = await response.json();
+
+                if (result.error) {
+                    throw new Error("Server Error: " + result.error);
+                }
+
+                // 3. Convert Base64 response to Blob
+                const byteCharacters = atob(result.pdf);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                return new Blob([byteArray], { type: 'application/pdf' });
 
             } else {
                 throw new Error("Unsupported format");
