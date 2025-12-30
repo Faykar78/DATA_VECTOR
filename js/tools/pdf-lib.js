@@ -70,7 +70,7 @@ const PDFActions = {
             folder.file(`page_${i + 1}.pdf`, pdfBytes);
         }
 
-        return await zip.generateAsync({ type: "blob" });
+        return zip.generate({ type: "blob" });
     },
 
     extractPages: async (file, pageIndices) => {
@@ -182,7 +182,7 @@ const PDFActions = {
             folder.file(`page_${i}.jpg`, imgData.split(',')[1], { base64: true });
         }
 
-        return await zip.generateAsync({ type: "blob" });
+        return zip.generate({ type: "blob" });
     },
 
     convertToPdf: async (file) => {
