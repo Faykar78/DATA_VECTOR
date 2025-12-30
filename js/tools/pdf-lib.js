@@ -190,14 +190,17 @@ const PDFActions = {
 
         // Create a HIDDEN container for conversion
         const container = document.createElement('div');
-        container.style.position = 'fixed'; // Fixed to avoid scrollbar expansion
-        container.style.left = '-10000px';
-        container.style.top = '0px';
+        container.style.position = 'fixed';
+        container.style.left = '0px'; // Visible for debug
+        container.style.top = '100px';
         container.style.width = '800px';
+        container.style.height = '600px';
         container.style.padding = '20px';
-        container.style.background = 'white';
+        container.style.background = '#f0f0f0';
+        container.style.border = '5px solid red'; // Visual indicator
         container.style.color = 'black';
-        container.style.zIndex = '-1000';
+        container.style.zIndex = '10000'; // On top of everything
+        container.style.overflow = 'auto';
         // container.style.visibility = 'hidden'; // Don't use this, html2canvas won't render it
 
         try {
