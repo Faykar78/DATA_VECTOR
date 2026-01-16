@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iLovePDF Clone - Results</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=nixtio">
+</head>
+
+<body>
+
+    <header>
+        <a href="index.html" class="logo">DataVector</a>
+    </header>
+
+    <div class="tool-interface" style="min-height: 50vh;">
+        <div class="tool-header-inner">
+            <h1 id="resultTitle">Success!</h1>
+            <p id="resultDesc">Your task has been processed successfully.</p>
+        </div>
+
+        <div class="action-area" style="flex-direction: column; align-items: center; gap: 20px;">
+
+            <!-- Variable Output Container -->
+            <div id="outputContainer" style="width: 100%; max-width: 800px;">
+                <!-- Content injected by app.js -->
+            </div>
+
+            <div style="margin-top: 2rem;">
+                <a href="index.html" class="btn-secondary">Process another file</a>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
