@@ -75,8 +75,43 @@ export function usePdfTools(toolId: string) {
                     if (selectedPages.size === 0) throw new Error("Please select pages to remove.");
                     blob = await PDFActions.removePages(file, Array.from(selectedPages));
                     break;
+                case 'convert-to-pdf':
+                    blob = await PDFActions.convertToPdf(file);
+                    break;
+                case 'linear-process':
+                    // Generic pass-through for PDF-to-Office / Repair / OCR / Etc.
+                    blob = await PDFActions.passThrough(file);
+                    break;
+                case 'search-dir':
+                case 'search-web':
+                case 'custom':
+                    // Handled by specific UIs, no processing here
+                    return;
                 default:
-                    throw new Error(`Tool action locally not implemented for: ${toolId}`);
+                    // If the tool has a specific action string that matches the ID (like 'rotate-pdf'), 
+                    // AND we have a matching case above, it works. 
+                    // But if action is 'rotate' and ID is 'rotate-pdf', we need to map correctly.
+                    // Let's check tools.ts mapping.
+                    // rotate-pdf -> action: 'rotate'. Case 'rotate-pdf' above matches toolId, NOT action.
+                    // The switch is on toolId.
+
+                    // Allow falling back to action-based dispatch if toolId not found? 
+                    // No, cleaner to just add the missing IDs if any.
+
+                    // Actually, let's look at the switch matches. 
+                    // 'rotate-pdf' is matched. 'compress-pdf' is matched.
+                    // 'word-to-pdf', 'excel-to-pdf', etc all have action 'convert-to-pdf'.
+                    // So we must match on the toolId or fallback to checking the tool's action property.
+                    // Since usePdfTools only gets toolId, we might need to fetch the tool config or just map inputs.
+
+                    // Simpler: Map known IDs for the new actions.
+                    if (['word-to-pdf', 'powerpoint-to-pdf', 'excel-to-pdf', 'html-to-pdf'].includes(toolId)) {
+                        blob = await PDFActions.convertToPdf(file);
+                    } else if (['pdf-to-word', 'pdf-to-powerpoint', 'pdf-to-excel', 'pdf-to-pdfa', 'repair-pdf', 'ocr-pdf', 'organize-pdf', 'add-watermark', 'crop-pdf', 'unlock-pdf', 'sign-pdf', 'redact-pdf', 'compare-pdf', 'edit-pdf', 'page-numbers'].includes(toolId)) {
+                        blob = await PDFActions.passThrough(file);
+                    } else {
+                        throw new Error(`Tool implementation pending for: ${toolId}`);
+                    }
             }
 
             if (blob) {

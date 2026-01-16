@@ -186,4 +186,96 @@ export class PDFActions {
         }
         return doc.output('blob');
     }
+
+    // --- Legacy Backend URL ---
+    static GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyyhY0HheFeo7V0g4M4uunhsJmoZ9uLNtJXDKa6Ifb1BL4xYM2GOSO5efs1JKROmktv/exec';
+
+    static async convertWithBackend(file: File, actionName: string): Promise<Blob> {
+        const dataUrl = await this.readFileAsDataURL(file);
+        const base64 = dataUrl.split(',')[1];
+
+        const response = await fetch(this.GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: actionName,
+                fileData: base64,
+                fileName: file.name
+            })
+        });
+
+        const result = await response.json();
+        if (result.error) throw new Error("Server Error: " + result.error);
+
+        // Decode base64 PDF
+        const byteCharacters = atob(result.pdf);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        return new Blob([new Uint8Array(byteNumbers)], { type: 'application/pdf' });
+    }
+
+    static async convertToPdf(file: File): Promise<Blob> {
+        const ext = file.name.split('.').pop()?.toLowerCase();
+
+        // 1. Backend Conversions (Word, PPT)
+        if (['doc', 'docx'].includes(ext || '')) {
+            return await this.convertWithBackend(file, 'convert_word');
+        }
+        if (['ppt', 'pptx'].includes(ext || '')) {
+            return await this.convertWithBackend(file, 'convert_pptx');
+        }
+
+        // 2. Client-side Conversions (Excel, HTML)
+        if (['xls', 'xlsx', 'html', 'htm'].includes(ext || '')) {
+            // Dynamic imports for browser-only libs
+            const html2pdf = (await import('html2pdf.js')).default;
+
+            // Create container
+            const container = document.createElement('div');
+            container.style.position = 'fixed';
+            container.style.left = '-9999px';
+            container.style.top = '0px';
+            container.style.width = '800px';
+            container.style.background = 'white';
+            document.body.appendChild(container);
+
+            try {
+                if (['xls', 'xlsx'].includes(ext || '')) {
+                    const XLSX = await import('xlsx');
+                    const arrayBuffer = await this.readFileAsArrayBuffer(file);
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const html = XLSX.utils.sheet_to_html(worksheet);
+                    container.innerHTML = html;
+                } else {
+                    const text = await file.text();
+                    container.innerHTML = text;
+                }
+
+                // Generate PDF
+                const opt = {
+                    margin: 10,
+                    filename: file.name + '.pdf',
+                    image: { type: 'jpeg' as 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as 'portrait' }
+                };
+
+                const pdfBlob = await html2pdf().set(opt).from(container).output('blob');
+                return pdfBlob;
+
+            } finally {
+                document.body.removeChild(container);
+            }
+        }
+
+        throw new Error(`Unsupported format: .${ext}`);
+    }
+
+    static async passThrough(file: File): Promise<Blob> {
+        // Simulate processing for 'PDF to X' tools that just return the file in legacy
+        return new Promise(resolve => setTimeout(() => resolve(file), 1500));
+    }
 }

@@ -266,6 +266,28 @@ export default function ToolInterface({ tool }: { tool: any }) {
                                     <Upload size={20} />
                                     Select Files
                                 </button>
+
+                                {tool.id === 'scan-pdf' && (
+                                    <>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                document.getElementById('cameraInput')?.click();
+                                            }}
+                                            className="btn-primary bg-red-500 hover:bg-red-600 mt-2 flex items-center gap-2 pointer-events-auto z-20"
+                                        >
+                                            📷 Camera
+                                        </button>
+                                        <input
+                                            id="cameraInput"
+                                            type="file"
+                                            capture="environment"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleFileChange}
+                                        />
+                                    </>
+                                )}
                             </div>
 
                             <input
