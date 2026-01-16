@@ -2,10 +2,8 @@ import { PDFDocument, degrees } from 'pdf-lib';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Set worker source for pdf.js to local file
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+// import * as pdfjsLib from 'pdfjs-dist';
+// pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 export class PDFActions {
     // --- Utilities ---
@@ -132,6 +130,11 @@ export class PDFActions {
         const zip = new JSZip();
         const folder = zip.folder("images");
         const arrayBuffer = await this.readFileAsArrayBuffer(file);
+
+        // Dynamic import
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
 
         for (let i = 1; i <= pdf.numPages; i++) {
@@ -153,6 +156,11 @@ export class PDFActions {
 
     static async compress(file: File, quality: number = 0.6): Promise<Blob> {
         const arrayBuffer = await this.readFileAsArrayBuffer(file);
+
+        // Dynamic import
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
         const doc = new jsPDF();
 
