@@ -1,11 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
 import { Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
-
-// Set worker again just in case (client side)
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 // --- Components ---
 
@@ -103,6 +99,10 @@ export function PageSelector({ file, selectedPages, setSelectedPages }: {
     useEffect(() => {
         const loadPdf = async () => {
             try {
+                // Dynamic import to avoid SSR 'DOMMatrix' error
+                const pdfjsLib = await import('pdfjs-dist');
+                pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+
                 const arrayBuffer = await file.arrayBuffer();
                 const doc = await pdfjsLib.getDocument(arrayBuffer).promise;
                 setPdf(doc);
